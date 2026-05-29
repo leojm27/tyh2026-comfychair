@@ -1,8 +1,8 @@
 const Stages = Object.freeze({
-    Receiving: "Receiving",
-    Bidding: "Bidding",
-    Assignment: "Assignment",
-    Selection: "Selection"
+    Receiving: Symbol("Receiving"),
+    Bidding: Symbol("Bidding"),
+    Assignment: Symbol("Assignment"),
+    Selection: Symbol("Selection")
 });
 
 module.exports = Stages;
