@@ -18,6 +18,14 @@ class Paper {
     }
 
     /**
+     * Devuelve los autores del paper.
+     * @returns {User[]}
+     */
+    authors() {
+        return this._authors;
+    }
+
+    /**
      * Devuelve las revisiones del paper.
      * @returns 
      */
