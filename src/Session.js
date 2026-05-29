@@ -66,25 +66,46 @@ class Session {
             throw new Error("Cannot submit papers at this stage");
     }
 
+    /**
+     * Obtener los papers enviados a la sesion.
+     * @returns {Paper[]} Arreglo de objetos Paper que representan los papers enviados.
+     */
     papers() {
         return this._papers;
     }
 
+    /**
+     * Obtener las ofertas (bids) de la sesion.
+     * @returns {Bid[]} Arreglo de objetos Bid que representan las ofertas.
+     */
     bids() {
         return this._bids;
     }
 
+    /**
+     * Obtener la etapa actual de la sesion.
+     * @returns {string} Etapa actual de la sesion.
+     */
     stage() {
         return this._stage;
     }
 
+    /**
+     * Establecer la etapa actual de la sesion.
+     * @param {string} stage Etapa a establecer.
+     */
     setStage(stage) {
         this._stage = stage;
     }
 
+    /**
+     * Cerrar la etapa de recepción de papers y pasar a la etapa de "Bidding".
+     * Una vez cerrada la etapa de recepción, no se pueden enviar más papers a la sesion.
+     */
     closeSubmissions() {
         this.setStage(Stages.Bidding);
     }
+
     /**
      * Ingresar una oferta (bid) para un paper por un revisor.
      * @param {*} paper Objeto que representa el paper.
@@ -114,6 +135,7 @@ class Session {
     bidExistsFor(paper, reviewer) {
         return this.bidFor(paper, reviewer) !== undefined;
     }
+    
     /**
      * Obtener la oferta (bid) para un paper por un revisor.
      * @param {*} paper Objeto que representa el paper.
