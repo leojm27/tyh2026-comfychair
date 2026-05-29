@@ -1,4 +1,5 @@
-const { Bid, Interests } = require("./Bid");
+const Bid = require("./Bid");
+const Interests = require("./constants/Interests");
 const Stages = require("./constants/Stages");
 
 class Session {
@@ -135,7 +136,7 @@ class Session {
     bidExistsFor(paper, reviewer) {
         return this.bidFor(paper, reviewer) !== undefined;
     }
-    
+
     /**
      * Obtener la oferta (bid) para un paper por un revisor.
      * @param {*} paper Objeto que representa el paper.

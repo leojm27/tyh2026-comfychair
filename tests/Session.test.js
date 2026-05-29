@@ -1,7 +1,9 @@
 const Session = require("../src/Session");
+const Stages = require("../src/constants/Stages");
 const User = require("../src/User");
 const Paper = require("../src/Paper");
-const {Bid, Interests} = require("../src/Bid");
+const Bid = require("../src/Bid");
+const Interests = require("../src/constants/Interests");
 
 let newSession;
 let asse;

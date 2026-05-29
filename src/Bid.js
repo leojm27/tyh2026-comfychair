@@ -1,28 +1,43 @@
-const Interests = {
-	Interested: Symbol("Interested"),
-	Maybe: Symbol("Maybe"),
-	NotInterested: Symbol("NotInterested"),
-	Conflict: Symbol("Conflict")
-};
+const Interests = require("./constants/Interests");
 
-class Bid{
-    constructor(paper, reviewer, interest){
+class Bid {
+    constructor(paper, reviewer, interest) {
         this._paper = paper;
         this._reviewer = reviewer;
         this._interest = interest;
 
     }
-    paper(){
+
+    /**
+     * Devuelve el paper asociado a la oferta.
+     * @returns 
+     */
+    paper() {
         return this._paper;
     }
-    reviewer(){
+
+    /**
+     * Devuelve el revisor asociado a la oferta.
+     * @returns 
+     */
+    reviewer() {
         return this._reviewer;
     }
-    interest(){
+
+    /**
+     * Devuelve el interés asociado a la oferta.
+     * @returns 
+     */
+    interest() {
         return this._interest;
     }
-    setInterest(interest){
+
+    /**
+     * Establece el interés asociado a la oferta.
+     * @param {*} interest 
+     */
+    setInterest(interest) {
         this._interest = interest;
     }
 }
-module.exports = {Bid, Interests};
+module.exports = Bid;
