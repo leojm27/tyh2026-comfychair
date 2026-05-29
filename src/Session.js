@@ -1,74 +1,136 @@
-const {Bid, Interests} = require("./Bid");
+const { Bid, Interests } = require("./Bid");
+const Stages = require("./constants/Stages");
 
-class Session{
-    constructor(){
+class Session {
+    constructor() {
         this._name = "";
-        this._programCommittee=[];
-        this._papers=[];
-        this._bids=[];
-        this._stage="Receiving";
+        this._programCommittee = [];
+        this._papers = [];
+        this._bids = [];
+        this._stage = Stages.Receiving;
     }
-    name(){
+
+    name() {
         return this._name;
     };
-    programCommittee(){
+
+    /**
+     * Obtener el programa de comite de la sesion. 
+     * El programa de comite es un arreglo de objetos User.
+     * @returns {User[]} Arreglo de objetos User que representan el programa de comite.
+     */
+    programCommittee() {
         return this._programCommittee;
     };
-    reviewers(){
+
+    /**
+     * Obtener los revisores de la sesion.
+     * @returns {User[]} Arreglo de objetos User que representan los revisores.
+     */
+    reviewers() {
         return this._programCommittee;
     };
-    addReviewer(user){
+
+    /**
+     * Agregar un revisor al programa de comite de la sesion.
+     * @param {User} user Objeto User que representa al revisor.
+     */
+    addReviewer(user) {
         this._programCommittee.push(user);
     }
-    canSubmit(paper){
-        if (this.stage() == "Receiving" )
+
+    /**
+     * Determinar si un paper puede ser enviado a la sesion.
+     * El paper debe ser valido y la sesion debe estar en etapa de "Receiving"
+     * @param {*} paper 
+     * @returns {boolean} True si el paper puede ser enviado, false en caso contrario.
+     */
+    canSubmit(paper) {
+        if (this.stage() == Stages.Receiving)
             return paper.isValid();
-        else 
+        else
             return false;
     }
-    submit(paper){
+
+    /**
+     * Enviar un paper a la sesion.
+     * El paper debe ser valido y la sesion debe estar en etapa de "Receiving"
+     * @param {*} paper Objeto que representa el paper.
+     */
+    submit(paper) {
         if (!this.canSubmit(paper)) throw new Error("Cannot submit invalid paper");
-        
-        if (this.stage() == "Receiving" )
+
+        if (this.stage() == Stages.Receiving)
             this._papers.push(paper);
         else
             throw new Error("Cannot submit papers at this stage");
     }
-    papers(){
+
+    papers() {
         return this._papers;
     }
-    bids(){
+
+    bids() {
         return this._bids;
     }
-    stage(){
+
+    stage() {
         return this._stage;
     }
-    setStage(stage){
+
+    setStage(stage) {
         this._stage = stage;
     }
-    closeSubmissions(){
-        this.setStage("Bidding");
+
+    closeSubmissions() {
+        this.setStage(Stages.Bidding);
     }
-    enterBid(paper, reviewer, interest){
-        if (this.stage() == "Bidding" )
-            if(this.bidExistsFor(paper, reviewer)){
-                let existing =  this.bidFor(paper, reviewer);
+    /**
+     * Ingresar una oferta (bid) para un paper por un revisor.
+     * @param {*} paper Objeto que representa el paper.
+     * @param {*} reviewer Objeto que representa al revisor.
+     * @param {*} interest Nivel de interes del revisor en el paper.
+     */
+    enterBid(paper, reviewer, interest) {
+        if (this.stage() == Stages.Bidding)
+            if (this.bidExistsFor(paper, reviewer)) {
+                let existing = this.bidFor(paper, reviewer);
                 existing.setInterest(interest);
             }
-            else{
+            else {
                 let bid = new Bid(paper, reviewer, interest);
                 this._bids.push(bid);
             }
         else
             throw new Error("Cannot enter bids from the current stage.");
     }
-    bidExistsFor(paper, reviewer){
-        return typeof(this.bidFor(paper, reviewer)) != "undefined";
+
+    /**
+     * Determinar si existe una oferta (bid) para un paper por un revisor.
+     * @param {*} paper Objeto que representa el paper.
+     * @param {*} reviewer Objeto que representa al revisor.
+     * @returns {boolean} True si existe una oferta, false en caso contrario.
+     */
+    bidExistsFor(paper, reviewer) {
+        return this.bidFor(paper, reviewer) !== undefined;
     }
-    bidFor(paper, reviewer){
-        return this._bids.find( (suspect) => (suspect.paper() == paper) && (suspect.reviewer()==reviewer) );
+    /**
+     * Obtener la oferta (bid) para un paper por un revisor.
+     * @param {*} paper Objeto que representa el paper.
+     * @param {*} reviewer Objeto que representa al revisor.
+     * @returns {Bid} Objeto Bid que representa la oferta.
+     */
+    bidFor(paper, reviewer) {
+        return this._bids.find((suspect) => (suspect.paper() == paper) && (suspect.reviewer() == reviewer));
     }
-    interestFor(paper, reviewer){
+
+    /**
+     * Obtener el nivel de interes de un revisor en un paper.
+     * @param {*} paper Objeto que representa el paper.
+     * @param {*} reviewer Objeto que representa al revisor.
+     * @returns {Interests} Nivel de interes del revisor en el paper.
+     */
+    interestFor(paper, reviewer) {
         return this.bidFor(paper, reviewer).interest();
     }
 }

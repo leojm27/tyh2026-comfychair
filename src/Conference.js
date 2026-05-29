@@ -1,22 +1,45 @@
-class Conference{
-    constructor(name){
+/**
+ * Clase que representa una conferencia.
+ * Contiene el nombre de la conferencia, los chairs y las sesiones.
+ */
+class Conference {
+    constructor(name) {
         this._name = name;
         this._chairs = [];
         this._sessions = [];
     }
-    name(){
+
+    /**
+     * Devuelve el nombre de la conferencia.
+     */
+    name() {
         return this._name;
     }
-    chairs(){
+    /**
+     * Devuelve los chairs de la conferencia.
+     */
+    chairs() {
         return this._chairs;
     }
-    sessions(){
+
+    /**
+     * Devuelve las sesiones de la conferencia.
+     */
+    sessions() {
         return this._sessions;
     }
-    addChair(user){
+
+    /**
+     * Añade un chair a la conferencia.
+     */
+    addChair(user) {
         this._chairs.push(user);
     }
-    addSession(session){
+
+    /**
+     * Añade una sesión a la conferencia.
+     */
+    addSession(session) {
         this._sessions.push(session);
     }
 }
