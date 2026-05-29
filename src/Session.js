@@ -3,49 +3,33 @@ const Interests = require("./constants/Interests");
 const Stages = require("./constants/Stages");
 
 class Session {
-    constructor() {
-        this._name = "";
+    constructor(name = "") {
+        this._name = name;
         this._programCommittee = [];
         this._papers = [];
         this._bids = [];
+        this._assignments = [];
+        this._acceptedPapers = [];
         this._stage = Stages.Receiving;
     }
 
     name() {
         return this._name;
-    };
+    }
 
-    /**
-     * Obtener el programa de comite de la sesion. 
-     * El programa de comite es un arreglo de objetos User.
-     * @returns {User[]} Arreglo de objetos User que representan el programa de comite.
-     */
-    programCommittee() {
+    programCommittee(){
         return this._programCommittee;
-    };
+    }
 
-    /**
-     * Obtener los revisores de la sesion.
-     * @returns {User[]} Arreglo de objetos User que representan los revisores.
-     */
     reviewers() {
-        return this._programCommittee;
-    };
+        return this.programCommittee();
+    }
 
-    /**
-     * Agregar un revisor al programa de comite de la sesion.
-     * @param {User} user Objeto User que representa al revisor.
-     */
     addReviewer(user) {
         this._programCommittee.push(user);
     }
 
-    /**
-     * Determinar si un paper puede ser enviado a la sesion.
-     * El paper debe ser valido y la sesion debe estar en etapa de "Receiving"
-     * @param {*} paper 
-     * @returns {boolean} True si el paper puede ser enviado, false en caso contrario.
-     */
+    /** Devuelve true si el paper es valido y la sesion esta en etapa Receiving. */
     canSubmit(paper) {
         if (this.stage() == Stages.Receiving)
             return paper.isValid();
@@ -53,66 +37,97 @@ class Session {
             return false;
     }
 
-    /**
-     * Enviar un paper a la sesion.
-     * El paper debe ser valido y la sesion debe estar en etapa de "Receiving"
-     * @param {*} paper Objeto que representa el paper.
-     */
+    /** Envia un paper a la sesion. Lanza error si no es valido o la etapa no es Receiving. */
     submit(paper) {
         if (!this.canSubmit(paper)) throw new Error("Cannot submit invalid paper");
-
-        if (this.stage() == Stages.Receiving)
-            this._papers.push(paper);
-        else
-            throw new Error("Cannot submit papers at this stage");
+        this._papers.push(paper);
     }
 
-    /**
-     * Obtener los papers enviados a la sesion.
-     * @returns {Paper[]} Arreglo de objetos Paper que representan los papers enviados.
-     */
+    /** Valida que la modificacion de un paper sea en etapa Receiving y que el paper siga siendo valido. */
+    updatePaper(paper) {
+        if (this.stage() !== Stages.Receiving)
+            throw new Error("Cannot update papers outside of Receiving stage.");
+        if (!this._papers.includes(paper))
+            throw new Error("Paper was not submitted to this session.");
+        if (!paper.isValid())
+            throw new Error("Updated paper is no longer valid.");
+    }
+
     papers() {
         return this._papers;
     }
 
-    /**
-     * Obtener las ofertas (bids) de la sesion.
-     * @returns {Bid[]} Arreglo de objetos Bid que representan las ofertas.
-     */
     bids() {
         return this._bids;
     }
 
-    /**
-     * Obtener la etapa actual de la sesion.
-     * @returns {string} Etapa actual de la sesion.
-     */
     stage() {
         return this._stage;
     }
 
-    /**
-     * Establecer la etapa actual de la sesion.
-     * @param {string} stage Etapa a establecer.
-     */
     setStage(stage) {
         this._stage = stage;
     }
 
-    /**
-     * Cerrar la etapa de recepción de papers y pasar a la etapa de "Bidding".
-     * Una vez cerrada la etapa de recepción, no se pueden enviar más papers a la sesion.
-     */
+    /** Receiving → Bidding. */
     closeSubmissions() {
         this.setStage(Stages.Bidding);
     }
 
+    /** Bidding → Assignment. Dispara la asignacion automatica de revisores. */
+    closeBidding() {
+        this.setStage(Stages.Assignment);
+        this._autoAssignReviewers();
+    }
+
     /**
-     * Ingresar una oferta (bid) para un paper por un revisor.
-     * @param {*} paper Objeto que representa el paper.
-     * @param {*} reviewer Objeto que representa al revisor.
-     * @param {*} interest Nivel de interes del revisor en el paper.
+     * Asigna 3 revisores por paper en orden: Interested > Maybe > sin bid > NotInterested.
+     * Respeta cuota maxima por revisor y excluye autores del paper (conflicto de interes).
      */
+    _autoAssignReviewers() {
+        const papers = this._papers;
+        const reviewers = this._programCommittee;
+        const quota = Math.ceil(3 * papers.length / reviewers.length);
+        const assignmentCount = new Map();
+
+        reviewers.forEach((reviewer) => {
+            assignmentCount.set(reviewer, 0);
+        });
+
+        const priorityGroups = [Interests.Interested, Interests.Maybe, null, Interests.NotInterested];
+
+        for (const paper of papers) {
+            const assigned = [];
+
+            for (const interestLevel of priorityGroups) {
+                if (assigned.length >= 3) break;
+
+                for (const reviewer of reviewers) {
+                    if (assigned.length >= 3) break;
+                    if (paper.authors().includes(reviewer)) continue;
+                    if (assignmentCount.get(reviewer) >= quota) continue;
+
+                    const bid = this.bidFor(paper, reviewer);
+                    const reviewerInterest = bid ? bid.interest() : null;
+
+                    if (reviewerInterest === interestLevel) {
+                        assigned.push(reviewer);
+                        assignmentCount.set(reviewer, assignmentCount.get(reviewer) + 1);
+                        this._assignments.push({ paper: paper, reviewer: reviewer });
+                    }
+                }
+            }
+        }
+    }
+
+    /** Devuelve los revisores asignados a un paper. */
+    assignmentsFor(paper) {
+        return this._assignments
+            .filter((a) => a.paper === paper)
+            .map((a) => a.reviewer);
+    }
+
+    /** Registra o actualiza el bid de un revisor para un paper. Solo en etapa Bidding. */
     enterBid(paper, reviewer, interest) {
         if (this.stage() == Stages.Bidding)
             if (this.bidExistsFor(paper, reviewer)) {
@@ -127,34 +142,56 @@ class Session {
             throw new Error("Cannot enter bids from the current stage.");
     }
 
-    /**
-     * Determinar si existe una oferta (bid) para un paper por un revisor.
-     * @param {*} paper Objeto que representa el paper.
-     * @param {*} reviewer Objeto que representa al revisor.
-     * @returns {boolean} True si existe una oferta, false en caso contrario.
-     */
+
+
     bidExistsFor(paper, reviewer) {
         return this.bidFor(paper, reviewer) !== undefined;
     }
 
-    /**
-     * Obtener la oferta (bid) para un paper por un revisor.
-     * @param {*} paper Objeto que representa el paper.
-     * @param {*} reviewer Objeto que representa al revisor.
-     * @returns {Bid} Objeto Bid que representa la oferta.
-     */
     bidFor(paper, reviewer) {
         return this._bids.find((suspect) => (suspect.paper() == paper) && (suspect.reviewer() == reviewer));
     }
 
-    /**
-     * Obtener el nivel de interes de un revisor en un paper.
-     * @param {*} paper Objeto que representa el paper.
-     * @param {*} reviewer Objeto que representa al revisor.
-     * @returns {Interests} Nivel de interes del revisor en el paper.
-     */
     interestFor(paper, reviewer) {
         return this.bidFor(paper, reviewer).interest();
+    }
+
+    /** Assignment → Reviewing. */
+    closeAssignment() {
+        this.setStage(Stages.Reviewing);
+    }
+
+    /**
+     * Carga la revision de un revisor asignado. Solo en etapa Reviewing.
+     * El puntaje debe estar entre -3 y +3.
+     */
+    submitReview(paper, reviewer, text, score) {
+        if (this.stage() !== Stages.Reviewing)
+            throw new Error("Cannot submit reviews from the current stage.");
+        if (!this.assignmentsFor(paper).includes(reviewer))
+            throw new Error("Reviewer is not assigned to this paper.");
+        if (score < -3 || score > 3)
+            throw new Error("Score must be between -3 and +3.");
+        paper.addReview(reviewer, text, score);
+    }
+
+    /** Reviewing → Selection. */
+    closeReviewing() {
+        this.setStage(Stages.Selection);
+    }
+
+    /**
+     * Acepta el top N% de papers ordenados por score descendente.
+     * @param {number} percentage Porcentaje de aceptacion (0-100).
+     */
+    selectPapers(percentage) {
+        const count = Math.floor(this._papers.length * percentage / 100);
+        const sorted = this._papers.slice().sort((a, b) => b.score() - a.score());
+        this._acceptedPapers = sorted.slice(0, count);
+    }
+
+    acceptedPapers() {
+        return this._acceptedPapers;
     }
 }
 

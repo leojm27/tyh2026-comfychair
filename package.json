@@ -4,8 +4,7 @@
   "description": "TyH 2024 - Reference Implementation",
   "main": "index.js",
   "scripts": {
-    "test": "jest",
-    "test:coverage": "jest --coverage"
+    "test": "jest --coverage"
   },
   "keywords": [],
   "author": "",
