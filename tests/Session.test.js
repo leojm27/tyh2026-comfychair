@@ -69,3 +69,91 @@ describe("During the bidding process, a Session", () => {
         expect(submission).toThrow();
     })
 })
+
+describe("A Session in Receiving stage", () => {
+    it("allows updating a paper if it remains valid", () => {
+        asse.submit(paper01);
+        paper01.setTitle("Updated title");
+        expect(() => asse.updatePaper(paper01)).not.toThrow();
+    });
+
+    it("does not allow updating a paper if it becomes invalid", () => {
+        asse.submit(paper01);
+        paper01.setTitle("");
+        expect(() => asse.updatePaper(paper01)).toThrow();
+    });
+
+    it("Error -> aper was not submitted to this session.", () => {
+        expect(() => asse.updatePaper(paper01)).toThrow();
+    });
+});
+
+describe("A Session outside of Receiving stage", () => {
+    it("does not allow updating papers", () => {
+        asse.submit(paper01);
+        asse.closeSubmissions();
+        paper01.setTitle("Updated title");
+        expect(() => asse.updatePaper(paper01)).toThrow();
+    });
+});
+
+describe("Error -> Cannot enter bids from the current stage.", () => {
+    it("should not allow entering bids in Receiving stage", () => {
+        expect(() => asse.enterBid(paper01, juan, Interests.Interested)).toThrow();
+    });
+});
+
+describe("submitReview() method", () => {
+    it("should allow submitting reviews in Reviewing stage", () => {
+        asse.addReviewer(juan);
+        asse.submit(paper02);
+        asse.closeSubmissions();
+        asse.enterBid(paper02, juan, Interests.Interested);
+        asse.closeBidding();
+        asse.closeAssignment();
+        expect(() => asse.submitReview(paper02, juan, "Great paper!", 2)).not.toThrow();
+    });
+
+    it("should not allow submitting reviews outside of Reviewing stage", () => {
+        asse.submit(paper01);
+        expect(() => asse.submitReview(paper01, juan, "Great paper!", 2)).toThrow();
+    });
+});
+
+describe("Test _autoAssignReviewers method", () => {
+    let rev1, rev2, rev3;
+
+    beforeEach(() => {
+        rev1 = new User("Reviewer One",   "LIFIA, UNLP", "rev1@lifia.ar", "123");
+        rev2 = new User("Reviewer Two",   "LIFIA, UNLP", "rev2@lifia.ar", "123");
+        rev3 = new User("Reviewer Three", "LIFIA, UNLP", "rev3@lifia.ar", "123");
+        asse.addReviewer(rev1);
+        asse.addReviewer(rev2);
+        asse.addReviewer(rev3);
+    });
+
+    it("assigns 3 reviewers per paper in order: Interested > Maybe > NotInterested", () => {
+        asse.submit(paper01);
+        asse.submit(paper02);
+        asse.submit(paper03);
+        asse.closeSubmissions();
+
+        asse.enterBid(paper01, rev1, Interests.Interested);
+        asse.enterBid(paper01, rev2, Interests.Maybe);
+        asse.enterBid(paper01, rev3, Interests.NotInterested);
+
+        asse.enterBid(paper02, rev1, Interests.Maybe);
+        asse.enterBid(paper02, rev2, Interests.Interested);
+        asse.enterBid(paper02, rev3, Interests.NotInterested);
+
+        asse.enterBid(paper03, rev1, Interests.NotInterested);
+        asse.enterBid(paper03, rev2, Interests.Maybe);
+        asse.enterBid(paper03, rev3, Interests.Interested);
+
+        asse.closeBidding();
+
+        expect(asse.assignmentsFor(paper01)).toEqual([rev1, rev2, rev3]);
+        expect(asse.assignmentsFor(paper02)).toEqual([rev2, rev1, rev3]);
+        expect(asse.assignmentsFor(paper03)).toEqual([rev3, rev2, rev1]);
+    });
+});

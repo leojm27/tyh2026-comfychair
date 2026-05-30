@@ -114,6 +114,12 @@ function submitPapers() {
     sessionServerless.submit(paper1);
     sessionServerless.submit(paper2);
     sessionBucketS3.submit(paper3);
+
+    // Modificar el abstract de paper2 durante Receiving (los envios pueden modificarse antes del cierre)
+    console.log("\nModificando el abstract de paper2 durante la etapa Receiving...");
+    paper2.setAbstract("This paper explores monitoring and observability strategies for serverless architectures, covering distributed tracing, log aggregation, and metrics collection. Updated to include comparison with existing tools and real-world benchmarks.");
+    sessionServerless.updatePaper(paper2);
+    console.log("Abstract actualizado correctamente durante Receiving.");
 }
 
 // ─── ETAPA 2: BIDDING ────────────────────────────────────────────────────────
@@ -131,6 +137,15 @@ function processBidding() {
         sessionServerless.submit(new RegularPaper("New paper after closing submissions", [user12], user12, "Abstract of paper submitted after closing."));
     } catch (error) {
         console.error("Error al enviar paper después de cerrar las submissions:", error.message);
+    }
+
+    // mostrar que no se pueden modificar papers después de cerrar las submissions
+    try {
+        console.log("\n### Logica de Negocio: No se pueden modificar papers después de cerrar las submissions.");
+        console.log("Intentando modificar paper2 después de cerrar las submissions...");
+        sessionServerless.updatePaper(paper2);
+    } catch (error) {
+        console.error("Error al modificar paper después de cerrar las submissions:", error.message);
     }
 
     // mostrar esta de bidding ingresando ofertas (bids) para los papers enviados a la session Serverless architecture

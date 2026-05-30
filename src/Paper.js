@@ -17,6 +17,10 @@ class Paper {
         return this._title;
     }
 
+    setTitle(title) {
+        this._title = title;
+    }
+
     /**
      * Devuelve los autores del paper.
      * @returns {User[]}

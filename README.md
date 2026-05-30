@@ -164,4 +164,6 @@ node simulacion.js
 | 4 | Solo 1 revisor elegible tras excluir conflictos | El sistema asigna los disponibles y genera score con las reviews existentes |
 | 5 | Bids con `NotInterested` | Considerados con menor prioridad; el revisor puede ser asignado si no hay otros candidatos |
 | 6 | Pool de 1 paper con corte del 60% | `Math.floor(1 × 0.6) = 0` → ningún paper aceptado (comportamiento esperado con pocos papers) |
+| 7 | Modificar un paper durante `Receiving` | El abstract se actualiza y `updatePaper()` lo valida correctamente |
+| 8 | Modificar un paper después de `closeSubmissions()` | Error: la sesión ya no está en etapa Receiving |
 
