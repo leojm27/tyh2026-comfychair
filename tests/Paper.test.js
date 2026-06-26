@@ -31,4 +31,22 @@ describe("A Paper", ()=>{
         paper.addReview(matias, "Paper is awesome", 3);
         expect(paper.score()).toBeCloseTo(-0.66666);
     })
+
+    it("should start with no assigned reviewers", () => {
+        expect(paper.assignedReviewers()).toHaveLength(0);
+    });
+
+    it("should allow assigning reviewers", () => {
+        paper.assignReviewer(juan);
+        expect(paper.assignedReviewers()).toContain(juan);
+        expect(paper.assignedReviewers()).toHaveLength(1);
+    });
+
+    it("should allow assigning multiple reviewers", () => {
+        paper.assignReviewer(juan);
+        paper.assignReviewer(julian);
+        paper.assignReviewer(matias);
+        expect(paper.assignedReviewers()).toHaveLength(3);
+        expect(paper.assignedReviewers()).toContain(julian);
+    });
 })

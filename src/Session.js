@@ -8,7 +8,6 @@ class Session {
         this._programCommittee = [];
         this._papers = [];
         this._bids = [];
-        this._assignments = [];
         this._acceptedPapers = [];
         this._stage = Stages.Receiving;
     }
@@ -115,7 +114,7 @@ class Session {
                     if (assigned.length >= 3) break;
                     assigned.push(reviewer);
                     assignmentCount.set(reviewer, assignmentCount.get(reviewer) + 1);
-                    this._assignments.push({ paper, reviewer });
+                    paper.assignReviewer(reviewer);
                 }
             }
         }
@@ -123,9 +122,7 @@ class Session {
 
     /** Devuelve los revisores asignados a un paper. */
     assignmentsFor(paper) {
-        return this._assignments
-            .filter((a) => a.paper === paper)
-            .map((a) => a.reviewer);
+        return paper.assignedReviewers();
     }
 
     /** Registra o actualiza el bid de un revisor para un paper. Solo en etapa Bidding. */
