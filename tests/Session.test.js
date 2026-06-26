@@ -156,3 +156,58 @@ describe("Test _autoAssignReviewers method", () => {
         expect(asse.assignmentsFor(paper03)).toEqual([rev3, rev2, rev1]);
     });
 });
+
+describe("Stage restrictions - operations not allowed outside their stage", () => {
+    it("does not allow closeBidding in Receiving stage", () => {
+        expect(() => asse.closeBidding()).toThrow("Operation not allowed in current stage.");
+    });
+
+    it("does not allow closeAssignment in Receiving stage", () => {
+        expect(() => asse.closeAssignment()).toThrow("Operation not allowed in current stage.");
+    });
+
+    it("does not allow closeReviewing in Receiving stage", () => {
+        expect(() => asse.closeReviewing()).toThrow("Operation not allowed in current stage.");
+    });
+
+    it("does not allow selectPapers in Receiving stage", () => {
+        expect(() => asse.selectPapers(50)).toThrow("Operation not allowed in current stage.");
+    });
+
+    it("does not allow closeSubmissions once already in Bidding stage", () => {
+        asse.closeSubmissions();
+        expect(() => asse.closeSubmissions()).toThrow("Operation not allowed in current stage.");
+    });
+});
+
+describe("ReviewingStage validations", () => {
+    beforeEach(() => {
+        asse.addReviewer(juan);
+        asse.submit(paper02);
+        asse.closeSubmissions();
+        asse.enterBid(paper02, juan, Interests.Interested);
+        asse.closeBidding();
+        asse.closeAssignment();
+    });
+
+    it("does not allow reviewing by a non-assigned reviewer", () => {
+        expect(() => asse.submitReview(paper02, julian, "Text", 1))
+            .toThrow("Reviewer is not assigned to this paper.");
+    });
+
+    it("does not allow a score below -3", () => {
+        expect(() => asse.submitReview(paper02, juan, "Text", -4))
+            .toThrow("Score must be between -3 and +3.");
+    });
+
+    it("does not allow a score above +3", () => {
+        expect(() => asse.submitReview(paper02, juan, "Text", 4))
+            .toThrow("Score must be between -3 and +3.");
+    });
+
+    it("transitions to SelectionStage after closeReviewing", () => {
+        const SelectionStage = require("../src/stages/SelectionStage");
+        asse.closeReviewing();
+        expect(asse.stage()).toBeInstanceOf(SelectionStage);
+    });
+});
