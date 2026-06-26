@@ -1,8 +1,6 @@
 const Session = require("../src/Session");
-const Stages = require("../src/constants/Stages");
 const User = require("../src/User");
 const Paper = require("../src/Paper");
-const Bid = require("../src/Bid");
 const Interests = require("../src/constants/Interests");
 const AcceptanceByCount = require("../src/policies/AcceptanceByCount");
 const AcceptanceByScoreThreshold = require("../src/policies/AcceptanceByScoreThreshold");
@@ -173,7 +171,7 @@ describe("Stage restrictions - operations not allowed outside their stage", () =
     });
 
     it("does not allow selectPapers in Receiving stage", () => {
-        expect(() => asse.selectPapers(50)).toThrow("Operation not allowed in current stage.");
+        expect(() => asse.selectPapers()).toThrow("Operation not allowed in current stage.");
     });
 
     it("does not allow closeSubmissions once already in Bidding stage", () => {
