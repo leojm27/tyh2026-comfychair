@@ -3,7 +3,7 @@ const SessionStage = require("./SessionStage");
 /**
  * Clase que representa la etapa de recepción de trabajos de la sesión.
  * En esta etapa, los autores pueden enviar sus trabajos para su consideración.
- * Una vez que se cierra la etapa de recepción, se pasa a la etapa de licitación.
+ * Una vez que se cierra la etapa de recepción, se pasa a la etapa de licitación (BiddingStage).
  */
 class ReceivingStage extends SessionStage {
 

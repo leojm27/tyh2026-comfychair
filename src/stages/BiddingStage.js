@@ -4,7 +4,7 @@ const Bid = require("../Bid");
 /**
  * Clase que representa la etapa de licitación de la sesión.
  * En esta etapa, los revisores pueden expresar su interés en revisar ciertos trabajos.
- * Una vez que se cierra la etapa de licitación, se pasa a la etapa de asignación de revisores.
+ * Una vez que se cierra la etapa de licitación, se pasa a la etapa de asignación de revisores (AssignmentStage).
  */
 class BiddingStage extends SessionStage {
 
