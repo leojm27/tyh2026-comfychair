@@ -89,33 +89,33 @@ class Session {
         const papers = this._papers;
         const reviewers = this._programCommittee;
         const quota = Math.ceil(3 * papers.length / reviewers.length);
-        const assignmentCount = new Map();
-
-        reviewers.forEach((reviewer) => {
-            assignmentCount.set(reviewer, 0);
-        });
+        const assignmentCount = new Map(reviewers.map(r => [r, 0]));
 
         const priorityGroups = [Interests.Interested, Interests.Maybe, null, Interests.NotInterested];
 
         for (const paper of papers) {
+            // 1. Criterios de elegibilidad: excluir autores del paper y revisores que agotaron su cuota.
+            const eligible = reviewers.filter(revisor =>
+                !paper.authors().includes(revisor) && assignmentCount.get(revisor) < quota
+            );
+
             const assigned = [];
 
             for (const interestLevel of priorityGroups) {
                 if (assigned.length >= 3) break;
 
-                for (const reviewer of reviewers) {
+                // 2. Criterio de prioridad: de los elegibles, quedarse con los del nivel de interes actual.
+                const candidates = eligible.filter(revisor => {
+                    const bid = this.bidFor(paper, revisor);
+                    return (bid ? bid.interest() : null) === interestLevel;
+                });
+
+                // 3. Asignar candidatos hasta completar 3 revisores para este paper.
+                for (const reviewer of candidates) {
                     if (assigned.length >= 3) break;
-                    if (paper.authors().includes(reviewer)) continue;
-                    if (assignmentCount.get(reviewer) >= quota) continue;
-
-                    const bid = this.bidFor(paper, reviewer);
-                    const reviewerInterest = bid ? bid.interest() : null;
-
-                    if (reviewerInterest === interestLevel) {
-                        assigned.push(reviewer);
-                        assignmentCount.set(reviewer, assignmentCount.get(reviewer) + 1);
-                        this._assignments.push({ paper: paper, reviewer: reviewer });
-                    }
+                    assigned.push(reviewer);
+                    assignmentCount.set(reviewer, assignmentCount.get(reviewer) + 1);
+                    this._assignments.push({ paper, reviewer });
                 }
             }
         }
