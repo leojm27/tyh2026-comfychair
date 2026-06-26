@@ -5,6 +5,7 @@ class Paper {
         if (!authors.includes(correspondingAuthor)) throw new Error("Corresponding author must be an author");
         this._title = title;
         this._reviews = [];
+        this._assignedReviewers = [];
         this._authors = authors;
         this._correspondingAuthor = correspondingAuthor;
     }
@@ -77,6 +78,22 @@ class Paper {
         }
         else
             return 0;
+    }
+
+    /**
+     * Devuelve los revisores asignados al paper.
+     * @returns {User[]}
+     */
+    assignedReviewers() {
+        return this._assignedReviewers;
+    }
+
+    /**
+     * Asigna un revisor al paper.
+     * @param {User} reviewer 
+     */
+    assignReviewer(reviewer) {
+        this._assignedReviewers.push(reviewer);
     }
 }
 
