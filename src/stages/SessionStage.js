@@ -1,3 +1,8 @@
+
+/**
+ * Clase abstracta que representa un estado de la sesión. 
+ * Cada estado tiene sus propias reglas de negocio y restricciones.
+ */
 class SessionStage {
 
     _notAllowed() {
