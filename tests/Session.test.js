@@ -4,6 +4,8 @@ const User = require("../src/User");
 const Paper = require("../src/Paper");
 const Bid = require("../src/Bid");
 const Interests = require("../src/constants/Interests");
+const AcceptanceByCount = require("../src/policies/AcceptanceByCount");
+const AcceptanceByScoreThreshold = require("../src/policies/AcceptanceByScoreThreshold");
 
 let newSession;
 let asse;
@@ -209,5 +211,53 @@ describe("ReviewingStage validations", () => {
         const SelectionStage = require("../src/stages/SelectionStage");
         asse.closeReviewing();
         expect(asse.stage()).toBeInstanceOf(SelectionStage);
+    });
+});
+
+describe("Session selectPapers with acceptance policies", () => {
+    let rev, p1, p2;
+
+    beforeEach(() => {
+        rev = new User("Rev", "Uni", "rev@uni.ar", "123");
+        p1  = new Paper("Paper high score", [juan], juan);
+        p2  = new Paper("Paper low score",  [matias], matias);
+
+        asse.addReviewer(rev);
+        asse.submit(p1);
+        asse.submit(p2);
+        asse.closeSubmissions();
+        asse.enterBid(p1, rev, Interests.Interested);
+        asse.enterBid(p2, rev, Interests.Interested);
+        asse.closeBidding();
+        asse.closeAssignment();
+        asse.submitReview(p1, rev, "Excellent work", 3);
+        asse.submitReview(p2, rev, "Needs improvement", 1);
+        asse.closeReviewing();
+    });
+
+    it("throws if no policy is configured", () => {
+        expect(() => asse.selectPapers()).toThrow("No acceptance policy configured.");
+    });
+
+    it("accepts top N papers with AcceptanceByCount", () => {
+        asse.setPolicy(new AcceptanceByCount(1));
+        asse.selectPapers();
+        expect(asse.acceptedPapers()).toContain(p1);
+        expect(asse.acceptedPapers()).not.toContain(p2);
+    });
+
+    it("accepts papers above threshold with AcceptanceByScoreThreshold", () => {
+        asse.setPolicy(new AcceptanceByScoreThreshold(2));
+        asse.selectPapers();
+        expect(asse.acceptedPapers()).toContain(p1);
+        expect(asse.acceptedPapers()).not.toContain(p2);
+    });
+
+    it("setPolicy() can change the policy before selection", () => {
+        asse.setPolicy(new AcceptanceByCount(0));
+        asse.setPolicy(new AcceptanceByScoreThreshold(2));
+        asse.selectPapers();
+        expect(asse.acceptedPapers()).toHaveLength(1);
+        expect(asse.acceptedPapers()).toContain(p1);
     });
 });
