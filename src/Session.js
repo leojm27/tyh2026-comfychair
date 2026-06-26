@@ -43,12 +43,13 @@ class Session {
         this._papers.push(paper);
     }
 
-    /** Valida que la modificacion de un paper sea en etapa Receiving y que el paper siga siendo valido. */
-    updatePaper(paper) {
+    /** Valida las condiciones, aplica el cambio via updater y verifica que el paper siga siendo valido. */
+    updatePaper(paper, updater) {
         if (this.stage() !== Stages.Receiving)
             throw new Error("Cannot update papers outside of Receiving stage.");
         if (!this._papers.includes(paper))
             throw new Error("Paper was not submitted to this session.");
+        updater(paper);
         if (!paper.isValid())
             throw new Error("Updated paper is no longer valid.");
     }

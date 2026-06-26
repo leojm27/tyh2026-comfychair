@@ -117,8 +117,7 @@ function submitPapers() {
 
     // Modificar el abstract de paper2 durante Receiving (los envios pueden modificarse antes del cierre)
     console.log("\nModificando el abstract de paper2 durante la etapa Receiving...");
-    paper2.setAbstract("This paper explores monitoring and observability strategies for serverless architectures, covering distributed tracing, log aggregation, and metrics collection. Updated to include comparison with existing tools and real-world benchmarks.");
-    sessionServerless.updatePaper(paper2);
+    sessionServerless.updatePaper(paper2, p => p.setAbstract("This paper explores monitoring and observability strategies for serverless architectures, covering distributed tracing, log aggregation, and metrics collection. Updated to include comparison with existing tools and real-world benchmarks."));
     console.log("Abstract actualizado correctamente durante Receiving.");
 }
 
@@ -143,7 +142,7 @@ function processBidding() {
     try {
         console.log("\n### Logica de Negocio: No se pueden modificar papers después de cerrar las submissions.");
         console.log("Intentando modificar paper2 después de cerrar las submissions...");
-        sessionServerless.updatePaper(paper2);
+        sessionServerless.updatePaper(paper2, p => p.setAbstract("Abstract that should not be applied."));
     } catch (error) {
         console.error("Error al modificar paper después de cerrar las submissions:", error.message);
     }

@@ -73,18 +73,17 @@ describe("During the bidding process, a Session", () => {
 describe("A Session in Receiving stage", () => {
     it("allows updating a paper if it remains valid", () => {
         asse.submit(paper01);
-        paper01.setTitle("Updated title");
-        expect(() => asse.updatePaper(paper01)).not.toThrow();
+        expect(() => asse.updatePaper(paper01, p => p.setTitle("Updated title"))).not.toThrow();
+        expect(paper01.title()).toBe("Updated title");
     });
 
     it("does not allow updating a paper if it becomes invalid", () => {
         asse.submit(paper01);
-        paper01.setTitle("");
-        expect(() => asse.updatePaper(paper01)).toThrow();
+        expect(() => asse.updatePaper(paper01, p => p.setTitle(""))).toThrow();
     });
 
     it("Error -> aper was not submitted to this session.", () => {
-        expect(() => asse.updatePaper(paper01)).toThrow();
+        expect(() => asse.updatePaper(paper01, p => p.setTitle("Updated title"))).toThrow();
     });
 });
 
@@ -92,8 +91,8 @@ describe("A Session outside of Receiving stage", () => {
     it("does not allow updating papers", () => {
         asse.submit(paper01);
         asse.closeSubmissions();
-        paper01.setTitle("Updated title");
-        expect(() => asse.updatePaper(paper01)).toThrow();
+        expect(() => asse.updatePaper(paper01, p => p.setTitle("Updated title"))).toThrow();
+        expect(paper01.title()).toBe("A new approach on something");
     });
 });
 
