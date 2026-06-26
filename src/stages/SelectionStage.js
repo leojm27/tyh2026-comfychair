@@ -7,10 +7,10 @@ const SessionStage = require("./SessionStage");
  */
 class SelectionStage extends SessionStage {
 
-    selectPapers(session, percentage) {
-        const count = Math.floor(session._papers.length * percentage / 100);
-        const sorted = session._papers.slice().sort((a, b) => b.score() - a.score());
-        session._acceptedPapers = sorted.slice(0, count);
+    selectPapers(session) {
+        if (!session._policy)
+            throw new Error("No acceptance policy configured.");
+        session._acceptedPapers = session._policy.select(session._papers);
     }
 }
 

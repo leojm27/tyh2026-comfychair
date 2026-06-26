@@ -9,6 +9,7 @@ class Session {
         this._bids = [];
         this._acceptedPapers = [];
         this._stage = new ReceivingStage();
+        this._policy = null;
     }
 
     name() {
@@ -147,9 +148,14 @@ class Session {
         this._stage.closeReviewing(this);
     }
 
-    /** Acepta el top N% de papers ordenados por score descendente. */
-    selectPapers(percentage) {
-        this._stage.selectPapers(this, percentage);
+    /** Configura la politica de seleccion de papers aceptados. */
+    setPolicy(policy) {
+        this._policy = policy;
+    }
+
+    /** Selecciona los papers aceptados segun la politica configurada. */
+    selectPapers() {
+        this._stage.selectPapers(this);
     }
 
     acceptedPapers() {
