@@ -1,9 +1,9 @@
 const Session = require("../src/Session");
-const Stages = require("../src/constants/Stages");
 const User = require("../src/User");
 const Paper = require("../src/Paper");
-const Bid = require("../src/Bid");
 const Interests = require("../src/constants/Interests");
+const AcceptanceByCount = require("../src/policies/AcceptanceByCount");
+const AcceptanceByScoreThreshold = require("../src/policies/AcceptanceByScoreThreshold");
 
 let newSession;
 let asse;
@@ -154,5 +154,108 @@ describe("Test _autoAssignReviewers method", () => {
         expect(asse.assignmentsFor(paper01)).toEqual([rev1, rev2, rev3]);
         expect(asse.assignmentsFor(paper02)).toEqual([rev2, rev1, rev3]);
         expect(asse.assignmentsFor(paper03)).toEqual([rev3, rev2, rev1]);
+    });
+});
+
+describe("Stage restrictions - operations not allowed outside their stage", () => {
+    it("does not allow closeBidding in Receiving stage", () => {
+        expect(() => asse.closeBidding()).toThrow("Operation not allowed in current stage.");
+    });
+
+    it("does not allow closeAssignment in Receiving stage", () => {
+        expect(() => asse.closeAssignment()).toThrow("Operation not allowed in current stage.");
+    });
+
+    it("does not allow closeReviewing in Receiving stage", () => {
+        expect(() => asse.closeReviewing()).toThrow("Operation not allowed in current stage.");
+    });
+
+    it("does not allow selectPapers in Receiving stage", () => {
+        expect(() => asse.selectPapers()).toThrow("Operation not allowed in current stage.");
+    });
+
+    it("does not allow closeSubmissions once already in Bidding stage", () => {
+        asse.closeSubmissions();
+        expect(() => asse.closeSubmissions()).toThrow("Operation not allowed in current stage.");
+    });
+});
+
+describe("ReviewingStage validations", () => {
+    beforeEach(() => {
+        asse.addReviewer(juan);
+        asse.submit(paper02);
+        asse.closeSubmissions();
+        asse.enterBid(paper02, juan, Interests.Interested);
+        asse.closeBidding();
+        asse.closeAssignment();
+    });
+
+    it("does not allow reviewing by a non-assigned reviewer", () => {
+        expect(() => asse.submitReview(paper02, julian, "Text", 1))
+            .toThrow("Reviewer is not assigned to this paper.");
+    });
+
+    it("does not allow a score below -3", () => {
+        expect(() => asse.submitReview(paper02, juan, "Text", -4))
+            .toThrow("Score must be between -3 and +3.");
+    });
+
+    it("does not allow a score above +3", () => {
+        expect(() => asse.submitReview(paper02, juan, "Text", 4))
+            .toThrow("Score must be between -3 and +3.");
+    });
+
+    it("transitions to SelectionStage after closeReviewing", () => {
+        const SelectionStage = require("../src/stages/SelectionStage");
+        asse.closeReviewing();
+        expect(asse.stage()).toBeInstanceOf(SelectionStage);
+    });
+});
+
+describe("Session selectPapers with acceptance policies", () => {
+    let rev, p1, p2;
+
+    beforeEach(() => {
+        rev = new User("Rev", "Uni", "rev@uni.ar", "123");
+        p1  = new Paper("Paper high score", [juan], juan);
+        p2  = new Paper("Paper low score",  [matias], matias);
+
+        asse.addReviewer(rev);
+        asse.submit(p1);
+        asse.submit(p2);
+        asse.closeSubmissions();
+        asse.enterBid(p1, rev, Interests.Interested);
+        asse.enterBid(p2, rev, Interests.Interested);
+        asse.closeBidding();
+        asse.closeAssignment();
+        asse.submitReview(p1, rev, "Excellent work", 3);
+        asse.submitReview(p2, rev, "Needs improvement", 1);
+        asse.closeReviewing();
+    });
+
+    it("throws if no policy is configured", () => {
+        expect(() => asse.selectPapers()).toThrow("No acceptance policy configured.");
+    });
+
+    it("accepts top N papers with AcceptanceByCount", () => {
+        asse.setPolicy(new AcceptanceByCount(1));
+        asse.selectPapers();
+        expect(asse.acceptedPapers()).toContain(p1);
+        expect(asse.acceptedPapers()).not.toContain(p2);
+    });
+
+    it("accepts papers above threshold with AcceptanceByScoreThreshold", () => {
+        asse.setPolicy(new AcceptanceByScoreThreshold(2));
+        asse.selectPapers();
+        expect(asse.acceptedPapers()).toContain(p1);
+        expect(asse.acceptedPapers()).not.toContain(p2);
+    });
+
+    it("setPolicy() can change the policy before selection", () => {
+        asse.setPolicy(new AcceptanceByCount(0));
+        asse.setPolicy(new AcceptanceByScoreThreshold(2));
+        asse.selectPapers();
+        expect(asse.acceptedPapers()).toHaveLength(1);
+        expect(asse.acceptedPapers()).toContain(p1);
     });
 });

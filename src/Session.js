@@ -1,6 +1,5 @@
-const Bid = require("./Bid");
 const Interests = require("./constants/Interests");
-const Stages = require("./constants/Stages");
+const ReceivingStage = require("./stages/ReceivingStage");
 
 class Session {
     constructor(name = "") {
@@ -9,7 +8,8 @@ class Session {
         this._papers = [];
         this._bids = [];
         this._acceptedPapers = [];
-        this._stage = Stages.Receiving;
+        this._stage = new ReceivingStage();
+        this._policy = null;
     }
 
     name() {
@@ -30,27 +30,17 @@ class Session {
 
     /** Devuelve true si el paper es valido y la sesion esta en etapa Receiving. */
     canSubmit(paper) {
-        if (this.stage() == Stages.Receiving)
-            return paper.isValid();
-        else
-            return false;
+        return this._stage.canSubmit(paper);
     }
 
     /** Envia un paper a la sesion. Lanza error si no es valido o la etapa no es Receiving. */
     submit(paper) {
-        if (!this.canSubmit(paper)) throw new Error("Cannot submit invalid paper");
-        this._papers.push(paper);
+        this._stage.submit(this, paper);
     }
 
     /** Valida las condiciones, aplica el cambio via updater y verifica que el paper siga siendo valido. */
     updatePaper(paper, updater) {
-        if (this.stage() !== Stages.Receiving)
-            throw new Error("Cannot update papers outside of Receiving stage.");
-        if (!this._papers.includes(paper))
-            throw new Error("Paper was not submitted to this session.");
-        updater(paper);
-        if (!paper.isValid())
-            throw new Error("Updated paper is no longer valid.");
+        this._stage.updatePaper(this, paper, updater);
     }
 
     papers() {
@@ -71,13 +61,12 @@ class Session {
 
     /** Receiving → Bidding. */
     closeSubmissions() {
-        this.setStage(Stages.Bidding);
+        this._stage.closeSubmissions(this);
     }
 
     /** Bidding → Assignment. Dispara la asignacion automatica de revisores. */
     closeBidding() {
-        this.setStage(Stages.Assignment);
-        this._autoAssignReviewers();
+        this._stage.closeBidding(this);
     }
 
     /**
@@ -127,17 +116,7 @@ class Session {
 
     /** Registra o actualiza el bid de un revisor para un paper. Solo en etapa Bidding. */
     enterBid(paper, reviewer, interest) {
-        if (this.stage() == Stages.Bidding)
-            if (this.bidExistsFor(paper, reviewer)) {
-                let existing = this.bidFor(paper, reviewer);
-                existing.setInterest(interest);
-            }
-            else {
-                let bid = new Bid(paper, reviewer, interest);
-                this._bids.push(bid);
-            }
-        else
-            throw new Error("Cannot enter bids from the current stage.");
+        this._stage.enterBid(this, paper, reviewer, interest);
     }
 
 
@@ -156,36 +135,27 @@ class Session {
 
     /** Assignment → Reviewing. */
     closeAssignment() {
-        this.setStage(Stages.Reviewing);
+        this._stage.closeAssignment(this);
     }
 
-    /**
-     * Carga la revision de un revisor asignado. Solo en etapa Reviewing.
-     * El puntaje debe estar entre -3 y +3.
-     */
+    /** Carga la revision de un revisor asignado. Solo en etapa Reviewing. */
     submitReview(paper, reviewer, text, score) {
-        if (this.stage() !== Stages.Reviewing)
-            throw new Error("Cannot submit reviews from the current stage.");
-        if (!this.assignmentsFor(paper).includes(reviewer))
-            throw new Error("Reviewer is not assigned to this paper.");
-        if (score < -3 || score > 3)
-            throw new Error("Score must be between -3 and +3.");
-        paper.addReview(reviewer, text, score);
+        this._stage.submitReview(this, paper, reviewer, text, score);
     }
 
     /** Reviewing → Selection. */
     closeReviewing() {
-        this.setStage(Stages.Selection);
+        this._stage.closeReviewing(this);
     }
 
-    /**
-     * Acepta el top N% de papers ordenados por score descendente.
-     * @param {number} percentage Porcentaje de aceptacion (0-100).
-     */
-    selectPapers(percentage) {
-        const count = Math.floor(this._papers.length * percentage / 100);
-        const sorted = this._papers.slice().sort((a, b) => b.score() - a.score());
-        this._acceptedPapers = sorted.slice(0, count);
+    /** Configura la politica de seleccion de papers aceptados. */
+    setPolicy(policy) {
+        this._policy = policy;
+    }
+
+    /** Selecciona los papers aceptados segun la politica configurada. */
+    selectPapers() {
+        this._stage.selectPapers(this);
     }
 
     acceptedPapers() {

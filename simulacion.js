@@ -6,8 +6,9 @@
  * Ejecutar con: node simulacion.js
  */
 
-const Stages = require('./src/constants/Stages');
 const Interests = require('./src/constants/Interests');
+const AcceptanceByCount = require('./src/policies/AcceptanceByCount');
+const AcceptanceByScoreThreshold = require('./src/policies/AcceptanceByScoreThreshold');
 
 const User = require('./src/User');
 const Session = require('./src/Session');
@@ -296,9 +297,9 @@ function processSelection() {
     // Cerrar la etapa de revision y pasar a etapa de Seleccion
     sessionServerless.closeReviewing();
 
-    // Seleccionar los articulos aceptados por corte fijo del 60%
-    const acceptancePercentage = 60;
-    sessionServerless.selectPapers(acceptancePercentage);
+    // Politica: AcceptanceByCount — acepta el top 1 paper por score
+    sessionServerless.setPolicy(new AcceptanceByCount(1));
+    sessionServerless.selectPapers();
 
     // Mostrar resultado de la seleccion
     const selectionRows = sessionServerless.papers()
@@ -310,12 +311,15 @@ function processSelection() {
             Accepted: sessionServerless.acceptedPapers().includes(paper) ? "Si" : "No",
         }));
 
-    console.log(`\nSeleccion de articulos (corte fijo ${acceptancePercentage}%) en session "${sessionServerless.name()}":`);
+    console.log(`\nSeleccion de articulos (AcceptanceByCount: top 1) en session "${sessionServerless.name()}":`);
     console.table(selectionRows);
 
     // cerrar reviewing y seleccionar papers para S3 bucket management
     sessionBucketS3.closeReviewing();
-    sessionBucketS3.selectPapers(acceptancePercentage);
+
+    // Politica: AcceptanceByScoreThreshold — acepta papers con score >= 2
+    sessionBucketS3.setPolicy(new AcceptanceByScoreThreshold(2));
+    sessionBucketS3.selectPapers();
 
     const selectionRowsS3 = sessionBucketS3.papers()
         .slice()
@@ -326,7 +330,7 @@ function processSelection() {
             Accepted: sessionBucketS3.acceptedPapers().includes(paper) ? "Si" : "No",
         }));
 
-    console.log(`\nSeleccion de articulos (corte fijo ${acceptancePercentage}%) en session "${sessionBucketS3.name()}":`);
+    console.log(`\nSeleccion de articulos (AcceptanceByScoreThreshold: score >= 2) en session "${sessionBucketS3.name()}":`);
     console.table(selectionRowsS3);
 }
 
