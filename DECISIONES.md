@@ -1,4 +1,4 @@
-# Documento de Decisiones — ComfyChair TP1
+# Documento de Decisiones — ComfyChair TP1 y TP2
 
 ## Contexto
 
@@ -8,15 +8,15 @@ El sistema ComfyChair modela conferencias científicas con sesiones (*tracks*) q
 
 ## Decisiones de diseño
 
-### Decisión 1 — Mantener la lógica principal en `Session`
+### Decisión 1 — Mantener la lógica de asignación en `Session`
 
-Toda la lógica de asignación, carga de reviews y selección vive en `Session`, que ya tiene el contexto completo del flujo (artículos, bids, comité de programa y etapa actual). Extraer clases auxiliares hubiera agregado complejidad innecesaria para el alcance del TP. La asignación se encapsula en `_autoAssignReviewers()`, invocado automáticamente por `closeBidding()`.
+La lógica de asignación automática de revisores (`_autoAssignReviewers()`) permanece en `Session`, ya que requiere acceso directo a `_papers`, `_programCommittee` y `_bids`. Las etapas concretas (en particular `BiddingStage`) la invocan a través del parámetro `session`. El resto de las operaciones del flujo fueron distribuidas a las clases de stage en el TP2 (ver Decisión 7).
 
 ---
 
 ### Decisión 2 — Asignación de revisores: estructura y prioridad
 
-Cubre **4.1 — Asignación de revisores**. Las asignaciones se almacenan en `_assignments[]` como objetos literales `{ paper, reviewer }` — no se creó una clase separada porque una asignación no tiene comportamiento propio más allá de vincular esos dos objetos. El método `assignmentsFor(paper)` permite consultarlas. El algoritmo en `_autoAssignReviewers()` recorre los grupos `Interested → Maybe → sin bid → NotInterested`; la ausencia de bid se distingue de `NotInterested` comparando contra `null`, otorgándole prioridad intermedia (sección 2.5 del enunciado). Tests: `should receive bids`, `should allow overriding bids`.
+Cubre **4.1 — Asignación de revisores**. Las asignaciones se almacenan en `Paper._assignedReviewers[]` — no se creó una clase separada porque una asignación no tiene comportamiento propio más allá de vincular un paper con un revisor. El método `assignmentsFor(paper)` en `Session` delega en `paper.assignedReviewers()`. El algoritmo en `_autoAssignReviewers()` recorre los grupos `Interested → Maybe → sin bid → NotInterested`; la ausencia de bid se distingue de `NotInterested` comparando contra `null`, otorgándole prioridad intermedia (sección 2.5 del enunciado). Tests: `should receive bids`, `should allow overriding bids`.
 
 ---
 
@@ -32,21 +32,41 @@ Cubre el punto opcional de **4.1**. Todo revisor que figure en `paper.authors()`
 
 ---
 
-### Decisión 4 — Selección de papers por corte fijo con `Math.floor`
+### Decisión 4 — Selección de papers por política configurable
 
-Cubre **4.3 — Selección de artículos**. `selectPapers(percentage)` ordena los papers por score descendente y acepta los primeros `Math.floor(totalPapers * percentage / 100)`. Se usa `Math.floor` porque el porcentaje es un máximo (sección 2.7): nunca se puede superar esa proporción. El desempate por igual score preserva el orden de envío original (sort estable de JavaScript).
+Cubre **4.3 — Selección de artículos** (TP1) y **2.2 — Políticas de aceptación** (TP2). En el TP1 la selección se realizaba por corte fijo mediante `selectPapers(percentage)`. En el TP2 esta lógica fue extraída al Strategy Pattern: `Session.setPolicy(policy)` configura la política activa y `selectPapers()` (sin argumentos) delega en `policy.select(papers)`. Se implementaron dos políticas: `AcceptanceByCount` (top N por score) y `AcceptanceByScoreThreshold` (todos con score ≥ umbral). El desempate por igual score preserva el orden de envío original (sort estable de JavaScript).
 
 ---
 
 ### Decisión 5 — `Assignment` como etapa explícita con transición `closeAssignment()`
 
-El enunciado no especifica si la asignación debe ser una etapa observable. Se decidió modelarla como etapa explícita (`Stages.Assignment`) entre `Bidding` y `Reviewing`, permitiendo consultar y validar asignaciones antes de habilitar la carga de reviews.
+El enunciado no especifica si la asignación debe ser una etapa observable. Se decidió modelarla como etapa explícita (`AssignmentStage`) entre `BiddingStage` y `ReviewingStage`, permitiendo consultar y validar asignaciones antes de habilitar la carga de reviews.
 
 ---
 
 ### Decisión 6 — `updatePaper()` para modificar papers en etapa Receiving
 
-El enunciado establece que los envíos pueden modificarse hasta el cierre de la etapa (sección 2.3). `updatePaper(paper)` valida que la sesión esté en `Receiving`, que el paper pertenezca a la sesión y que siga siendo válido. El llamador aplica el cambio antes de invocar el método.
+El enunciado establece que los envíos pueden modificarse hasta el cierre de la etapa (sección 2.3). `updatePaper(paper, updater)` acepta una función que aplica el cambio al paper. La validación de que la sesión esté en `Receiving` vive en `ReceivingStage` (las demás etapas lanzan error automáticamente por herencia de `SessionStage`). Se verifica que el paper pertenezca a la sesión y que siga siendo válido tras la modificación.
+
+---
+
+### Decisión 7 — State Pattern para el flujo de etapas (TP2 — 2.1)
+
+El enunciado pide que cada etapa defina claramente sus operaciones habilitadas, que las operaciones inválidas produzcan errores y que sea posible agregar nuevas etapas sin modificar código existente.
+
+La solución original usaba guards `if (this.stage() === Stages.X)` dispersos en `Session`, lo que violaba el principio de responsabilidad única y hacía que agregar una nueva etapa requiriese modificar múltiples métodos.
+
+Se aplicó el **State Pattern**: `SessionStage` es la clase base donde todos los métodos lanzan error por defecto. Cada etapa concreta (`ReceivingStage`, `BiddingStage`, etc.) sobreescribe únicamente las operaciones que le corresponden. `Session` delega cada llamada a `this._stage.método(this, args)` sin ningún `if`. Agregar una nueva etapa requiere solo crear una nueva clase — `Session` no se toca.
+
+---
+
+### Decisión 8 — Strategy Pattern para las políticas de aceptación (TP2 — 2.2)
+
+El enunciado pide soportar distintas políticas de aceptación configurables (`AcceptanceByCount`, `AcceptanceByScoreThreshold`) y que la política pueda cambiarse independientemente del resto del sistema.
+
+La solución original tenía la lógica de selección hardcodeada en `selectPapers(percentage)` dentro de `Session`, lo que implicaba modificar `Session` cada vez que se quisiese una nueva política.
+
+Se aplicó el **Strategy Pattern**: `AcceptancePolicy` define la interfaz con un único método `select(papers)`. Cada política concreta encapsula su propio criterio. `Session` guarda la política activa en `_policy` y la cambia mediante `setPolicy(policy)`. `selectPapers()` solo delega — no sabe ni le importa qué política está activa. Agregar una nueva política requiere solo crear una nueva clase sin tocar `Session` ni `SelectionStage`.
 
 ---
 
@@ -83,14 +103,15 @@ classDiagram
         -_programCommittee: User[]
         -_papers: Paper[]
         -_bids: Bid[]
-        -_assignments: Object[]
         -_acceptedPapers: Paper[]
-        -_stage: Symbol
+        -_stage: SessionStage
+        -_policy: AcceptancePolicy
         +name() String
         +reviewers() User[]
         +addReviewer(user)
+        +canSubmit(paper) Boolean
         +submit(paper)
-        +updatePaper(paper)
+        +updatePaper(paper, updater)
         +closeSubmissions()
         +enterBid(paper, reviewer, interest)
         +closeBidding()
@@ -98,7 +119,8 @@ classDiagram
         +closeAssignment()
         +submitReview(paper, reviewer, text, score)
         +closeReviewing()
-        +selectPapers(percentage)
+        +setPolicy(policy)
+        +selectPapers()
         +acceptedPapers() Paper[]
     }
 
@@ -157,10 +179,52 @@ classDiagram
     Session *--> Paper
     Session *--> Bid
     Session o--> Paper : acceptedPapers
+    Session *--> SessionStage : _stage
+    Session o--> AcceptancePolicy : _policy
     Paper *--> Review
     Review o--> User : reviewer
     Bid o--> Paper
     Bid o--> User : reviewer
+    SessionStage <|-- ReceivingStage
+    SessionStage <|-- BiddingStage
+    SessionStage <|-- AssignmentStage
+    SessionStage <|-- ReviewingStage
+    SessionStage <|-- SelectionStage
+    AcceptancePolicy <|-- AcceptanceByCount
+    AcceptancePolicy <|-- AcceptanceByScoreThreshold
+
+    class SessionStage {
+        +canSubmit(paper) Boolean
+        +submit(session, paper)
+        +updatePaper(session, paper, updater)
+        +closeSubmissions(session)
+        +enterBid(session, paper, reviewer, interest)
+        +closeBidding(session)
+        +closeAssignment(session)
+        +submitReview(session, paper, reviewer, text, score)
+        +closeReviewing(session)
+        +selectPapers(session)
+    }
+
+    class ReceivingStage
+    class BiddingStage
+    class AssignmentStage
+    class ReviewingStage
+    class SelectionStage
+
+    class AcceptancePolicy {
+        +select(papers) Paper[]
+    }
+
+    class AcceptanceByCount {
+        -_count: Number
+        +select(papers) Paper[]
+    }
+
+    class AcceptanceByScoreThreshold {
+        -_minScore: Number
+        +select(papers) Paper[]
+    }
 ```
 
 ---
@@ -186,7 +250,7 @@ Se utilizó **Jest 29** como framework de testing unitario. Los tests cubren el 
 - Conflicto de interés: autores excluidos de asignación
 - Casos de error: envío/modificación fuera de etapa, revisor no asignado, puntaje fuera de rango
 
-La suite completa da como resultado **41 tests en 8 suites** con una cobertura global del **~93% de statements y ~95% de líneas**.
+La suite completa da como resultado **63 tests en 9 suites** con una cobertura global del **~98% de statements y ~99% de líneas**.
 
 Para ejecutar:
 ```bash

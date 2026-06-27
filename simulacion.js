@@ -6,7 +6,6 @@
  * Ejecutar con: node simulacion.js
  */
 
-const Stages = require('./src/constants/Stages');
 const Interests = require('./src/constants/Interests');
 const AcceptanceByCount = require('./src/policies/AcceptanceByCount');
 const AcceptanceByScoreThreshold = require('./src/policies/AcceptanceByScoreThreshold');
